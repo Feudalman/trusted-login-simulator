@@ -17,7 +17,7 @@ Content-Type: application/x-www-form-urlencoded
 token={signedJwt}
 ```
 
-The deployed test target defaults to `https://swanlab.aruing.top`. The Auth service accepts only enabled `TRUSTED` providers, validates an asymmetric JWT signature, requires an unexpired `exp`, requires `iss` to equal the Provider `clientId`, and maps the configured ID and username claims. On success, Auth redirects the new window into SwanLab's `/sso` flow, where an existing binding is logged in or a new private-deployment user is provisioned.
+The deployed test target is fixed to `https://swanlab.aruing.top` and is not configurable in the page. The Auth service accepts only enabled `TRUSTED` providers, validates an asymmetric JWT signature, requires an unexpired `exp`, requires `iss` to equal the Provider `clientId`, and maps the configured ID and username claims. On success, Auth redirects the new window into SwanLab's `/sso` flow, where an existing binding is logged in or a new private-deployment user is provisioned.
 
 ## Architecture
 
@@ -32,7 +32,7 @@ The app is built in a multi-stage container and served by nginx. Kubernetes reso
 The page is a compact single-screen testing form with these sections:
 
 1. SwanLab target
-   - SwanLab origin, default `https://swanlab.aruing.top`
+   - Fixed target display: `https://swanlab.aruing.top`
    - TRUSTED Provider name
 2. Signing
    - Algorithm selector, default `RS256`
@@ -78,7 +78,6 @@ No form values or tokens are written to local storage, session storage, IndexedD
 
 Validation occurs before key import and signing:
 
-- SwanLab origin must be an absolute `http` or `https` URL. Query strings and fragments are rejected, and trailing slashes are normalized away.
 - Provider name, issuer, claim names, claim values, and private key are required and trimmed.
 - Provider is encoded as one URL path segment.
 - Lifetime must be an integer from 1 through 600 seconds.
