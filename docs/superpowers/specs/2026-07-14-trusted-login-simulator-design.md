@@ -96,7 +96,7 @@ Network and SwanLab business errors render in the new window because the form na
 - `src/lib/token.ts`: extra-claim parsing, JWT payload construction, private-key import, and signing.
 - `src/lib/submit.ts`: callback URL construction, popup lifecycle, and hidden-form submission.
 - `src/lib/components/*`: focused form sections and diagnostics.
-- `src/routes/+page.svelte`: page-level state and orchestration only.
+- `src/App.svelte`: page-level state and orchestration only.
 
 Pure validation, payload, URL, and submission helpers remain independent from Svelte components so they can be unit tested without a browser page.
 
@@ -104,7 +104,7 @@ Pure validation, payload, URL, and submission helpers remain independent from Sv
 
 Vitest and Testing Library cover:
 
-- target URL normalization and rejection cases;
+- fixed callback URL construction and Provider path encoding;
 - lifetime and required-field validation;
 - identity claim collision and protected extra-claim rejection;
 - JWT payload timestamps and custom claim mappings;
