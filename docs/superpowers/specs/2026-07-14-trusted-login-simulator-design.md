@@ -25,7 +25,7 @@ The application is a static Svelte SPA. All configuration, PEM parsing, JWT cons
 
 The browser uses `jose` to import a user-supplied PKCS#8 PEM private key and sign the JWT. Supported algorithms match Auth: `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, and `ES512`. No HMAC algorithms are offered.
 
-The app is built in a multi-stage container and served by nginx. Kubernetes resources consist of one Deployment, one ClusterIP Service, and one Traefik `IngressRoute` matching `Host(`trusted.aruing.top`)`.
+The app can be built as a portable multi-stage nginx container. For this cluster, where Kubernetes API access is available but SSH image import is not, the production build is packaged into a generated ConfigMap and mounted into an unprivileged nginx image. Kubernetes resources consist of the static-asset ConfigMap, one Deployment, one ClusterIP Service, and one Traefik `IngressRoute` matching `Host(`trusted.aruing.top`)`.
 
 ## User Interface
 
@@ -118,9 +118,9 @@ The implementation follows red-green-refactor: each behavior receives a failing 
 
 ## Deployment
 
-Project deployment assets stay with the simulator, while cluster-facing manifests and a deployment helper are added under `/Users/zirui/projects/arui/arui-iac/swanlab/arui` as requested.
+Project deployment assets stay with the simulator, while cluster-facing manifests, the generated static-asset ConfigMap, and a deployment helper are added under `/Users/zirui/projects/arui/arui-iac/swanlab/arui` as requested.
 
-The deployment helper follows the existing personal-server workflow: build the image on the target Fedora host, import it into the k3s container runtime, apply the manifests, restart the Deployment, and wait for rollout. The Kubernetes workload uses a non-root nginx container, readiness/liveness probes, resource requests/limits, and `imagePullPolicy: IfNotPresent` for the locally imported image.
+The deployment helper builds the static assets locally, regenerates the ConfigMap manifest without persisting any form data, applies the manifests through the current `kubectl` context, restarts the Deployment, and waits for rollout. This avoids requiring SSH access, an image registry, or a node-architecture-specific build. The Kubernetes workload uses an unprivileged nginx image, readiness/liveness probes, and resource requests/limits.
 
 The `IngressRoute` sends `trusted.aruing.top` traffic directly to the simulator Service. Cloudflare DNS/tunnel routing must send that hostname to the same Traefik entry point already serving `swanlab.aruing.top`; the manifest does not store Cloudflare credentials.
 
