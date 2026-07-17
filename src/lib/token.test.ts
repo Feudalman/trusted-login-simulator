@@ -60,6 +60,17 @@ describe("signTrustedToken", () => {
     expect(result.payload).toEqual(verified.payload);
   });
 
+  it("generates a unique jti for every signed token", async () => {
+    const { config } = await rsaConfig();
+
+    const first = await signTrustedToken(config, 1_784_000_000);
+    const second = await signTrustedToken(config, 1_784_000_000);
+
+    expect(first.payload.jti).toEqual(expect.any(String));
+    expect(first.payload.jti).not.toBe("");
+    expect(second.payload.jti).not.toBe(first.payload.jti);
+  });
+
   it("does not expose invalid private-key contents in its error", async () => {
     const privateKey = "SENSITIVE-PRIVATE-KEY-CONTENT";
     const config = validateForm({

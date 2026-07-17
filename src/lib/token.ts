@@ -26,6 +26,7 @@ export async function signTrustedToken(
     })
       .setProtectedHeader({ alg: config.algorithm, typ: "JWT" })
       .setIssuer(config.issuer)
+      .setJti(crypto.randomUUID())
       .setIssuedAt(now)
       .setExpirationTime(now + config.expiresIn)
       .sign(key);
