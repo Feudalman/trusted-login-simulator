@@ -2,6 +2,8 @@
 
 用于模拟受信第三方平台发起 SwanLab TRUSTED 登录。页面在浏览器内使用用户提供的私钥签发短期 JWT，并通过新窗口向 SwanLab Auth 提交表单。
 
+地址： https://trusted.aruing.top
+
 ## 安全边界
 
 - 私钥、表单配置和 JWT 只存在于当前页面内存中。
