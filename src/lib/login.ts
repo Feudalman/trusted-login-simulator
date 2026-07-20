@@ -27,7 +27,7 @@ export async function startTrustedLogin(
   const { popup, target } = dependencies.openWindow();
   try {
     const signed = await dependencies.signToken(config);
-    dependencies.submit(signed.token, config.provider, target);
+    dependencies.submit(signed.token, config.origin, config.provider, target);
     return { header: signed.header, payload: signed.payload };
   } catch (error) {
     popup.close();

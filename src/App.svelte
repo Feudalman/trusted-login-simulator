@@ -49,7 +49,7 @@
 
   <form autocomplete="off" onsubmit={submit}>
     <div class="form-grid">
-      <TargetSection bind:provider={form.provider} />
+      <TargetSection bind:origin={form.origin} bind:provider={form.provider} />
       <SigningSection
         bind:algorithm={form.algorithm}
         bind:privateKey={form.privateKey}

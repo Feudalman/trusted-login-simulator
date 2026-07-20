@@ -48,13 +48,12 @@ beforeEach(() => {
 });
 
 describe("App", () => {
-  it("shows the fixed target and all configurable TRUSTED fields", () => {
+  it("shows the editable target and all configurable TRUSTED fields", () => {
     render(App);
 
-    expect(screen.getByText("https://swanlab.aruing.top")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("textbox", { name: /SwanLab 地址/ }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "SwanLab 根地址" })).toHaveValue(
+      "https://swanlab.aruing.top",
+    );
     expect(
       screen.getByRole("textbox", { name: "Provider" }),
     ).toBeInTheDocument();
@@ -109,6 +108,12 @@ describe("App", () => {
 
   it("submits the in-memory form and shows the signed preview", async () => {
     render(App);
+    await fireEvent.input(
+      screen.getByRole("textbox", { name: "SwanLab 根地址" }),
+      {
+        target: { value: "https://auth.example.com" },
+      },
+    );
     await fillRequiredFields();
 
     await fireEvent.click(screen.getByRole("button", { name: "打开 SwanLab" }));
@@ -116,6 +121,7 @@ describe("App", () => {
     await waitFor(() => expect(startTrustedLoginMock).toHaveBeenCalledOnce());
     expect(startTrustedLoginMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        origin: "https://auth.example.com",
         provider: "horizon",
         issuer: "trusted-client",
         externalUserId: "external-user-1",

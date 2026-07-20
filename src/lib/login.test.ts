@@ -43,6 +43,7 @@ describe("startTrustedLogin", () => {
     expect(deps.signToken).toHaveBeenCalledOnce();
     expect(deps.submit).toHaveBeenCalledWith(
       "signed.jwt.value",
+      "https://swanlab.aruing.top",
       "horizon",
       "trusted-window",
     );

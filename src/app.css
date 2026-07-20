@@ -175,29 +175,8 @@ h1 {
   font-size: 0.75rem;
 }
 
-.fixed-target {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+.target-field {
   margin-bottom: 22px;
-  padding: 13px 14px;
-  border: 1px solid #263244;
-  border-radius: 10px;
-  background: #0e131c;
-}
-
-.fixed-target span {
-  color: var(--muted);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-}
-
-.fixed-target code {
-  overflow: hidden;
-  color: #c7d1df;
-  font-size: 0.82rem;
-  text-overflow: ellipsis;
 }
 
 label {

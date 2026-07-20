@@ -17,6 +17,7 @@ function validForm(overrides: Partial<SimulatorForm> = {}): SimulatorForm {
 describe("defaultForm", () => {
   it("uses safe TRUSTED defaults", () => {
     expect(defaultForm()).toMatchObject({
+      origin: "https://swanlab.aruing.top",
       algorithm: "RS256",
       expiresIn: 60,
       externalUserIdClaim: "sub",
@@ -27,6 +28,24 @@ describe("defaultForm", () => {
 });
 
 describe("validateForm", () => {
+  it.each([
+    ["https://example.com/", "https://example.com"],
+    ["http://localhost:3000", "http://localhost:3000"],
+  ])("normalizes SwanLab root %s", (origin, expected) => {
+    expect(validateForm(validForm({ origin })).origin).toBe(expected);
+  });
+
+  it.each([
+    "not-a-url",
+    "ftp://example.com",
+    "https://user:pass@example.com",
+    "https://example.com/base",
+    "https://example.com?tenant=one",
+    "https://example.com#target",
+  ])("rejects invalid SwanLab root %s", (origin) => {
+    expect(() => validateForm(validForm({ origin }))).toThrow("SwanLab 根地址");
+  });
+
   it("trims fields and parses extra claims", () => {
     const result = validateForm(
       validForm({

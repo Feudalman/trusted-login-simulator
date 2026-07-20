@@ -3,8 +3,8 @@ export interface LoginWindow {
   target: string;
 }
 
-export function buildCallbackUrl(provider: string): string {
-  return `${SWANLAB_ORIGIN}/api/auth/sso/trusted/callback/${encodeURIComponent(provider)}`;
+export function buildCallbackUrl(origin: string, provider: string): string {
+  return `${origin}/api/auth/sso/trusted/callback/${encodeURIComponent(provider)}`;
 }
 
 export function openLoginWindow(openWindow = window.open): LoginWindow {
@@ -16,6 +16,7 @@ export function openLoginWindow(openWindow = window.open): LoginWindow {
 
 export function submitToken(
   token: string,
+  origin: string,
   provider: string,
   target: string,
   doc = document,
@@ -23,7 +24,7 @@ export function submitToken(
   const form = doc.createElement("form");
   const input = doc.createElement("input");
   form.method = "POST";
-  form.action = buildCallbackUrl(provider);
+  form.action = buildCallbackUrl(origin, provider);
   form.enctype = "application/x-www-form-urlencoded";
   form.target = target;
   form.hidden = true;
@@ -38,4 +39,3 @@ export function submitToken(
     form.remove();
   }
 }
-import { SWANLAB_ORIGIN } from "./config";

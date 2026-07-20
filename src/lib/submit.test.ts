@@ -7,9 +7,9 @@ afterEach(() => {
 });
 
 describe("buildCallbackUrl", () => {
-  it("uses the fixed SwanLab origin and encodes provider as one segment", () => {
-    expect(buildCallbackUrl("horizon / dev")).toBe(
-      "https://swanlab.aruing.top/api/auth/sso/trusted/callback/horizon%20%2F%20dev",
+  it("uses the supplied SwanLab origin and encodes provider as one segment", () => {
+    expect(buildCallbackUrl("https://auth.example.com", "horizon / dev")).toBe(
+      "https://auth.example.com/api/auth/sso/trusted/callback/horizon%20%2F%20dev",
     );
   });
 });
@@ -40,12 +40,17 @@ describe("submitToken", () => {
       submitted = this;
     });
 
-    submitToken("signed.jwt.value", "horizon", "trusted-window");
+    submitToken(
+      "signed.jwt.value",
+      "https://auth.example.com",
+      "horizon",
+      "trusted-window",
+    );
 
     expect(submitted).toBeDefined();
     expect(submitted?.method).toBe("post");
     expect(submitted?.action).toBe(
-      "https://swanlab.aruing.top/api/auth/sso/trusted/callback/horizon",
+      "https://auth.example.com/api/auth/sso/trusted/callback/horizon",
     );
     expect(submitted?.enctype).toBe("application/x-www-form-urlencoded");
     expect(submitted?.target).toBe("trusted-window");

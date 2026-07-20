@@ -1,4 +1,4 @@
-export const SWANLAB_ORIGIN = "https://swanlab.aruing.top";
+export const DEFAULT_SWANLAB_ORIGIN = "https://swanlab.aruing.top";
 
 export const algorithms = [
   "RS256",
@@ -12,6 +12,7 @@ export const algorithms = [
 export type SigningAlgorithm = (typeof algorithms)[number];
 
 export interface SimulatorForm {
+  origin: string;
   provider: string;
   algorithm: SigningAlgorithm;
   privateKey: string;
@@ -30,6 +31,7 @@ export interface ValidatedConfig extends Omit<SimulatorForm, "extraClaims"> {
 
 export function defaultForm(): SimulatorForm {
   return {
+    origin: DEFAULT_SWANLAB_ORIGIN,
     provider: "",
     algorithm: "RS256",
     privateKey: "",
@@ -49,6 +51,29 @@ function required(value: string, label: string): string {
   return normalized;
 }
 
+function validateOrigin(value: string): string {
+  const source = required(value, "SwanLab 根地址");
+  let url: URL;
+  try {
+    url = new URL(source);
+  } catch {
+    throw new Error("SwanLab 根地址必须是有效的 URL");
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("SwanLab 根地址只支持 HTTP 或 HTTPS");
+  }
+  if (
+    url.username ||
+    url.password ||
+    url.pathname !== "/" ||
+    url.search ||
+    url.hash
+  ) {
+    throw new Error("SwanLab 根地址不能包含凭据、路径、查询参数或锚点");
+  }
+  return url.origin;
+}
+
 function parseExtraClaims(source: string): Record<string, unknown> {
   let parsed: unknown;
   try {
@@ -63,6 +88,7 @@ function parseExtraClaims(source: string): Record<string, unknown> {
 }
 
 export function validateForm(form: SimulatorForm): ValidatedConfig {
+  const origin = validateOrigin(form.origin);
   const provider = required(form.provider, "Provider");
   const privateKey = required(form.privateKey, "私钥");
   const issuer = required(form.issuer, "Issuer");
@@ -99,6 +125,7 @@ export function validateForm(form: SimulatorForm): ValidatedConfig {
   }
 
   return {
+    origin,
     provider,
     algorithm: form.algorithm,
     privateKey,
