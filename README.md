@@ -49,19 +49,3 @@ pnpm check
 pnpm format:check
 pnpm build
 ```
-
-## Kubernetes 部署
-
-部署文件位于：
-
-```text
-/Users/zirui/projects/arui/arui-iac/swanlab/arui/
-```
-
-执行：
-
-```bash
-/Users/zirui/projects/arui/arui-iac/swanlab/arui/trusted-login-simulator
-```
-
-脚本会构建静态资源、更新 ConfigMap、应用 Deployment/Service/IngressRoute，并等待 rollout。IngressRoute 使用域名 `trusted.aruing.top`；该域名还需要在 Cloudflare Tunnel 中指向与 `swanlab.aruing.top` 相同的入口。
