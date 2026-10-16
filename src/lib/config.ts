@@ -1,4 +1,5 @@
-export const DEFAULT_SWANLAB_ORIGIN = "https://swanlab.aruing.top";
+export const DEFAULT_SWANLAB_ORIGIN =
+  "https://commercial.internal.powerducker.com";
 
 export const algorithms = [
   "RS256",
@@ -14,6 +15,7 @@ export type SigningAlgorithm = (typeof algorithms)[number];
 export interface SimulatorForm {
   origin: string;
   provider: string;
+  redirectTo: string;
   algorithm: SigningAlgorithm;
   privateKey: string;
   issuer: string;
@@ -33,6 +35,7 @@ export function defaultForm(): SimulatorForm {
   return {
     origin: DEFAULT_SWANLAB_ORIGIN,
     provider: "",
+    redirectTo: "",
     algorithm: "RS256",
     privateKey: "",
     issuer: "",
@@ -127,6 +130,7 @@ export function validateForm(form: SimulatorForm): ValidatedConfig {
   return {
     origin,
     provider,
+    redirectTo: form.redirectTo,
     algorithm: form.algorithm,
     privateKey,
     issuer,

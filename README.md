@@ -1,6 +1,6 @@
 # TRUSTED Login Simulator
 
-用于模拟受信第三方平台发起 SwanLab TRUSTED 登录。页面在浏览器内使用用户提供的私钥签发短期 JWT，并通过新窗口向 SwanLab Auth 提交表单。
+用于模拟受信第三方平台发起 SwanLab TRUSTED 登录。页面在浏览器内使用用户提供的私钥签发短期 JWT，并由开发服务器探测 Auth 回调：拿到 302 后不跳转，直接展示重定向目标地址。
 
 地址： https://trusted.aruing.top
 
@@ -9,12 +9,12 @@
 - 私钥、表单配置和 JWT 只存在于当前页面内存中。
 - 页面不使用 Cookie、Local Storage、Session Storage、IndexedDB 或服务端 API。
 - 刷新或关闭页面会清空全部输入。
-- CSP 禁止页面主动发起网络请求，并只允许向用户选择的 HTTP/HTTPS 目标提交登录表单。
+- CSP 禁止页面主动向外部发起网络请求；探测请求先发到同源开发服务器，再由其转发到目标（因此探测功能仅在 `pnpm dev` / `pnpm preview` 下可用）。
 - 应用不会生成、上传或保存密钥。
 
 ## 目标地址
 
-SwanLab 根地址默认是 `https://swanlab.aruing.top`，可在页面中修改为其他 HTTP/HTTPS 服务。只需填写服务器根地址；应用会自动拼接 `/api/auth/sso/trusted/callback/{Provider}` 回调路由。
+SwanLab 根地址默认是 `https://commercial.internal.powerducker.com`，可在页面中修改为其他 HTTP/HTTPS 服务。只需填写服务器根地址；应用会自动拼接 `/api/auth/sso/trusted/callback/{Provider}` 回调路由，POST token 后展示 302 的 `Location`（不打开新窗口、不跟随重定向）。
 
 ## Provider 配置
 
@@ -40,6 +40,8 @@ openssl pkey -in trusted-private.pem -pubout -out trusted-public.pem
 pnpm install
 pnpm dev
 ```
+
+开发服务器内置探测中间件：页面 POST 到同源 `/api/auth/sso/trusted/callback/{Provider}`，中间件按 `x-trusted-origin` 头转发到目标并回传 `{status, location}`。目标是自签证书时可用 `TRUSTED_PROBE_INSECURE=1 pnpm dev` 跳过 TLS 校验。
 
 检查：
 

@@ -17,7 +17,7 @@ function validForm(overrides: Partial<SimulatorForm> = {}): SimulatorForm {
 describe("defaultForm", () => {
   it("uses safe TRUSTED defaults", () => {
     expect(defaultForm()).toMatchObject({
-      origin: "https://swanlab.aruing.top",
+      origin: "https://commercial.internal.powerducker.com",
       algorithm: "RS256",
       expiresIn: 60,
       externalUserIdClaim: "sub",

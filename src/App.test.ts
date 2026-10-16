@@ -44,6 +44,10 @@ beforeEach(() => {
       sub: "external-user-1",
       username: "alice",
     },
+    redirect: {
+      status: 302,
+      location: "https://commercial.internal.powerducker.com/sso?state=abc123",
+    },
   });
 });
 
@@ -52,11 +56,14 @@ describe("App", () => {
     render(App);
 
     expect(screen.getByRole("textbox", { name: "SwanLab 根地址" })).toHaveValue(
-      "https://swanlab.aruing.top",
+      "https://commercial.internal.powerducker.com",
     );
     expect(
       screen.getByRole("textbox", { name: "Provider" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "redirectTo（可选）" }),
+    ).toHaveValue("");
     expect(screen.getByRole("combobox", { name: "签名算法" })).toHaveValue(
       "RS256",
     );
@@ -116,7 +123,9 @@ describe("App", () => {
     );
     await fillRequiredFields();
 
-    await fireEvent.click(screen.getByRole("button", { name: "打开 SwanLab" }));
+    await fireEvent.click(
+      screen.getByRole("button", { name: "签发并显示 302 目标" }),
+    );
 
     await waitFor(() => expect(startTrustedLoginMock).toHaveBeenCalledOnce());
     expect(startTrustedLoginMock).toHaveBeenCalledWith(
@@ -128,6 +137,12 @@ describe("App", () => {
         username: "alice",
       }),
     );
+    expect(
+      await screen.findByText(
+        "https://commercial.internal.powerducker.com/sso?state=abc123",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/未跳转 · HTTP 302/)).toBeInTheDocument();
     expect(await screen.findByText(/"alg": "RS256"/)).toBeInTheDocument();
     expect(screen.getByText(/"sub": "external-user-1"/)).toBeInTheDocument();
   });
@@ -139,7 +154,9 @@ describe("App", () => {
     render(App);
     await fillRequiredFields();
 
-    await fireEvent.click(screen.getByRole("button", { name: "打开 SwanLab" }));
+    await fireEvent.click(
+      screen.getByRole("button", { name: "签发并显示 302 目标" }),
+    );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "无法读取 PKCS#8 私钥",

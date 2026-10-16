@@ -35,7 +35,7 @@
       <span class="eyebrow">SWANLAB AUTH LAB</span>
       <h1>TRUSTED Login Simulator</h1>
       <p class="lead">
-        在浏览器内签发短期 JWT，并模拟受信第三方平台打开 SwanLab。
+        在浏览器内签发短期 JWT，并探测 SwanLab Auth 返回的 302 重定向目标。
       </p>
     </div>
     <div class="privacy-note">
@@ -49,7 +49,11 @@
 
   <form autocomplete="off" onsubmit={submit}>
     <div class="form-grid">
-      <TargetSection bind:origin={form.origin} bind:provider={form.provider} />
+      <TargetSection
+        bind:origin={form.origin}
+        bind:provider={form.provider}
+        bind:redirectTo={form.redirectTo}
+      />
       <SigningSection
         bind:algorithm={form.algorithm}
         bind:privateKey={form.privateKey}
@@ -67,12 +71,11 @@
 
     <div class="action-bar">
       <div>
-        <strong>准备好后，在新窗口继续流程</strong>
-        <span>Auth 将负责验签、账号绑定或自动创建。</span>
+        <strong>签发后自动探测，不打开新窗口</strong>
+        <span>显示 Auth 302 的 Location 目标地址，浏览器不会跳转。</span>
       </div>
       <button class="primary-button" type="submit" disabled={loading}>
-        {loading ? "正在签名…" : "打开 SwanLab"}
-        <span aria-hidden="true">↗</span>
+        {loading ? "正在签发并探测…" : "签发并显示 302 目标"}
       </button>
     </div>
   </form>

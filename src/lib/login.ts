@@ -1,22 +1,25 @@
 import { validateForm, type SimulatorForm } from "./config";
-import { openLoginWindow, submitToken } from "./submit";
+import {
+  appendLocationParam,
+  probeTrustedRedirect,
+  type RedirectProbe,
+} from "./submit";
 import { signTrustedToken, type SignedToken } from "./token";
 
 export interface LoginPreview {
   header: SignedToken["header"];
   payload: SignedToken["payload"];
+  redirect: RedirectProbe;
 }
 
 export interface LoginDependencies {
-  openWindow: typeof openLoginWindow;
   signToken: typeof signTrustedToken;
-  submit: typeof submitToken;
+  probe: typeof probeTrustedRedirect;
 }
 
 const defaultDependencies: LoginDependencies = {
-  openWindow: openLoginWindow,
   signToken: signTrustedToken,
-  submit: submitToken,
+  probe: probeTrustedRedirect,
 };
 
 export async function startTrustedLogin(
@@ -24,13 +27,19 @@ export async function startTrustedLogin(
   dependencies: LoginDependencies = defaultDependencies,
 ): Promise<LoginPreview> {
   const config = validateForm(form);
-  const { popup, target } = dependencies.openWindow();
-  try {
-    const signed = await dependencies.signToken(config);
-    dependencies.submit(signed.token, config.origin, config.provider, target);
-    return { header: signed.header, payload: signed.payload };
-  } catch (error) {
-    popup.close();
-    throw error;
-  }
+  const signed = await dependencies.signToken(config);
+  const probed = await dependencies.probe(
+    signed.token,
+    config.origin,
+    config.provider,
+  );
+  const redirect: RedirectProbe = {
+    status: probed.status,
+    location: appendLocationParam(
+      probed.location,
+      "redirectTo",
+      config.redirectTo,
+    ),
+  };
+  return { header: signed.header, payload: signed.payload, redirect };
 }

@@ -1,10 +1,21 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildCallbackUrl, openLoginWindow, submitToken } from "./submit";
+import { describe, expect, it, vi } from "vitest";
+import {
+  buildCallbackUrl,
+  appendLocationParam,
+  probeTrustedRedirect,
+} from "./submit";
 
-afterEach(() => {
-  vi.restoreAllMocks();
-  document.body.innerHTML = "";
-});
+function fakeResponse(overrides: {
+  ok?: boolean;
+  status?: number;
+  json?: () => Promise<unknown>;
+}): Response {
+  return {
+    ok: overrides.ok ?? true,
+    status: overrides.status ?? 200,
+    json: overrides.json ?? (async () => ({})),
+  } as unknown as Response;
+}
 
 describe("buildCallbackUrl", () => {
   it("uses the supplied SwanLab origin and encodes provider as one segment", () => {
@@ -14,49 +25,147 @@ describe("buildCallbackUrl", () => {
   });
 });
 
-describe("openLoginWindow", () => {
-  it("opens a named blank window synchronously", () => {
-    const popup = { close: vi.fn() } as unknown as Window;
-    const openWindow = vi.fn(() => popup);
-
-    const result = openLoginWindow(openWindow);
-
-    expect(openWindow).toHaveBeenCalledWith("", result.target);
-    expect(result.target).toMatch(/^trusted-login-/);
-    expect(result.popup).toBe(popup);
+describe("appendLocationParam", () => {
+  it("appends a query parameter to the intercepted redirect location", () => {
+    expect(
+      appendLocationParam(
+        "https://commercial.internal.powerducker.com/sso?state=MnqJtnTsSQsnJY3cGIa61jy4YPk07_z36rk662-hNiw",
+        "redirectTo",
+        "@admin/test/v1/hgcyig/runs/test-2/chart",
+      ),
+    ).toBe(
+      "https://commercial.internal.powerducker.com/sso?state=MnqJtnTsSQsnJY3cGIa61jy4YPk07_z36rk662-hNiw&redirectTo=%40admin%2Ftest%2Fv1%2Fhgcyig%2Fruns%2Ftest-2%2Fchart",
+    );
   });
 
-  it("reports popup blocking", () => {
-    expect(() => openLoginWindow(() => null)).toThrow("阻止了新窗口");
+  it("keeps the location unchanged without a value or on invalid URLs", () => {
+    const location = "https://swan.example.com/sso?state=state-1";
+    expect(appendLocationParam(location, "redirectTo", "")).toBe(location);
+    expect(appendLocationParam(location, "redirectTo", "  ")).toBe(location);
+    expect(appendLocationParam(null, "redirectTo", "/x")).toBeNull();
+    expect(appendLocationParam("not-a-url", "redirectTo", "/x")).toBe(
+      "not-a-url",
+    );
   });
 });
 
-describe("submitToken", () => {
-  it("submits an urlencoded token form to the target window and removes it", () => {
-    let submitted: HTMLFormElement | undefined;
-    vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(function (
-      this: HTMLFormElement,
-    ) {
-      submitted = this;
-    });
+describe("probeTrustedRedirect", () => {
+  it("posts the token to the dev-server probe route with the chosen origin", async () => {
+    const fetchImpl = vi.fn(async () =>
+      fakeResponse({
+        json: async () => ({
+          status: 302,
+          location: "https://swan.example.com/sso?state=state-1",
+        }),
+      }),
+    );
 
-    submitToken(
+    const result = await probeTrustedRedirect(
       "signed.jwt.value",
       "https://auth.example.com",
       "horizon",
-      "trusted-window",
+      fetchImpl,
     );
 
-    expect(submitted).toBeDefined();
-    expect(submitted?.method).toBe("post");
-    expect(submitted?.action).toBe(
-      "https://auth.example.com/api/auth/sso/trusted/callback/horizon",
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "/api/auth/sso/trusted/callback/horizon",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "x-trusted-origin": "https://auth.example.com",
+        },
+        body: "token=signed.jwt.value",
+      },
     );
-    expect(submitted?.enctype).toBe("application/x-www-form-urlencoded");
-    expect(submitted?.target).toBe("trusted-window");
-    expect(
-      submitted?.querySelector<HTMLInputElement>('input[name="token"]')?.value,
-    ).toBe("signed.jwt.value");
-    expect(document.body.contains(submitted!)).toBe(false);
+    expect(result).toEqual({
+      status: 302,
+      location: "https://swan.example.com/sso?state=state-1",
+    });
+  });
+
+  it("allows responses without a Location header", async () => {
+    const fetchImpl = vi.fn(async () =>
+      fakeResponse({ json: async () => ({ status: 200, location: null }) }),
+    );
+
+    await expect(
+      probeTrustedRedirect(
+        "signed.jwt.value",
+        "https://auth.example.com",
+        "horizon",
+        fetchImpl,
+      ),
+    ).resolves.toEqual({ status: 200, location: null });
+  });
+
+  it("surfaces upstream errors from the probe route", async () => {
+    const fetchImpl = vi.fn(async () =>
+      fakeResponse({
+        ok: false,
+        status: 502,
+        json: async () => ({ error: "无法访问上游回调：超时" }),
+      }),
+    );
+
+    await expect(
+      probeTrustedRedirect(
+        "signed.jwt.value",
+        "https://auth.example.com",
+        "horizon",
+        fetchImpl,
+      ),
+    ).rejects.toThrow("无法访问上游回调：超时");
+  });
+
+  it("falls back to the HTTP status when the error body is unusable", async () => {
+    const fetchImpl = vi.fn(async () =>
+      fakeResponse({
+        ok: false,
+        status: 500,
+        json: async () => {
+          throw new Error("bad json");
+        },
+      }),
+    );
+
+    await expect(
+      probeTrustedRedirect(
+        "signed.jwt.value",
+        "https://auth.example.com",
+        "horizon",
+        fetchImpl,
+      ),
+    ).rejects.toThrow("回调探测失败（HTTP 500）");
+  });
+
+  it("reports connectivity problems to the dev server", async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError("fetch failed");
+    });
+
+    await expect(
+      probeTrustedRedirect(
+        "signed.jwt.value",
+        "https://auth.example.com",
+        "horizon",
+        fetchImpl,
+      ),
+    ).rejects.toThrow("无法连接本地开发服务器");
+  });
+
+  it("rejects malformed probe payloads", async () => {
+    const fetchImpl = vi.fn(async () =>
+      fakeResponse({ json: async () => "not-an-object" }),
+    );
+
+    await expect(
+      probeTrustedRedirect(
+        "signed.jwt.value",
+        "https://auth.example.com",
+        "horizon",
+        fetchImpl,
+      ),
+    ).rejects.toThrow("探测响应格式异常");
   });
 });

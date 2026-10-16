@@ -14,9 +14,7 @@ function validForm(): SimulatorForm {
 }
 
 function dependencies(overrides: Partial<LoginDependencies> = {}) {
-  const popup = { close: vi.fn() } as unknown as Window;
   const deps: LoginDependencies = {
-    openWindow: vi.fn(() => ({ popup, target: "trusted-window" })),
     signToken: vi.fn(async () => ({
       token: "signed.jwt.value",
       header: { alg: "RS256", typ: "JWT" },
@@ -26,28 +24,27 @@ function dependencies(overrides: Partial<LoginDependencies> = {}) {
         username: "alice",
       },
     })),
-    submit: vi.fn(),
+    probe: vi.fn(async () => ({
+      status: 302,
+      location: "https://swan.example.com/sso?state=state-1",
+    })),
     ...overrides,
   };
-  return { deps, popup };
+  return { deps };
 }
 
 describe("startTrustedLogin", () => {
-  it("opens the window synchronously, signs, submits, and returns a safe preview", async () => {
-    const { deps, popup } = dependencies();
+  it("signs the token, probes the redirect target, and returns both", async () => {
+    const { deps } = dependencies();
 
-    const resultPromise = startTrustedLogin(validForm(), deps);
+    const result = await startTrustedLogin(validForm(), deps);
 
-    expect(deps.openWindow).toHaveBeenCalledOnce();
-    const result = await resultPromise;
     expect(deps.signToken).toHaveBeenCalledOnce();
-    expect(deps.submit).toHaveBeenCalledWith(
+    expect(deps.probe).toHaveBeenCalledWith(
       "signed.jwt.value",
-      "https://swanlab.aruing.top",
+      "https://commercial.internal.powerducker.com",
       "horizon",
-      "trusted-window",
     );
-    expect(popup.close).not.toHaveBeenCalled();
     expect(result).toEqual({
       header: { alg: "RS256", typ: "JWT" },
       payload: {
@@ -55,40 +52,59 @@ describe("startTrustedLogin", () => {
         sub: "external-user-1",
         username: "alice",
       },
+      redirect: {
+        status: 302,
+        location: "https://swan.example.com/sso?state=state-1",
+      },
     });
   });
 
-  it("validates before opening a window", async () => {
+  it("validates the form before signing or probing", async () => {
     const { deps } = dependencies();
 
     await expect(
       startTrustedLogin({ ...validForm(), provider: "" }, deps),
     ).rejects.toThrow("Provider");
 
-    expect(deps.openWindow).not.toHaveBeenCalled();
+    expect(deps.signToken).not.toHaveBeenCalled();
+    expect(deps.probe).not.toHaveBeenCalled();
   });
 
-  it("closes the blank window when signing fails", async () => {
-    const error = new Error("无法签名");
-    const { deps, popup } = dependencies({
-      signToken: vi.fn(async () => Promise.reject(error)),
-    });
-
-    await expect(startTrustedLogin(validForm(), deps)).rejects.toBe(error);
-
-    expect(popup.close).toHaveBeenCalledOnce();
-    expect(deps.submit).not.toHaveBeenCalled();
-  });
-
-  it("closes the blank window when form submission fails", async () => {
-    const error = new Error("无法提交");
-    const { deps, popup } = dependencies({
-      submit: vi.fn(() => {
-        throw error;
+  it("propagates signing errors without probing", async () => {
+    const { deps } = dependencies({
+      signToken: vi.fn(async () => {
+        throw new Error("无法读取 PKCS#8 私钥");
       }),
     });
 
-    await expect(startTrustedLogin(validForm(), deps)).rejects.toBe(error);
-    expect(popup.close).toHaveBeenCalledOnce();
+    await expect(startTrustedLogin(validForm(), deps)).rejects.toThrow(
+      "无法读取 PKCS#8 私钥",
+    );
+    expect(deps.probe).not.toHaveBeenCalled();
+  });
+
+  it("appends the manual redirectTo value to the intercepted location", async () => {
+    const { deps } = dependencies();
+
+    const result = await startTrustedLogin(
+      { ...validForm(), redirectTo: "@admin/test/v1/hgcyig/runs/test-2/chart" },
+      deps,
+    );
+
+    expect(result.redirect.location).toBe(
+      "https://swan.example.com/sso?state=state-1&redirectTo=%40admin%2Ftest%2Fv1%2Fhgcyig%2Fruns%2Ftest-2%2Fchart",
+    );
+  });
+
+  it("propagates probe errors", async () => {
+    const { deps } = dependencies({
+      probe: vi.fn(async () => {
+        throw new Error("无法访问上游回调：超时");
+      }),
+    });
+
+    await expect(startTrustedLogin(validForm(), deps)).rejects.toThrow(
+      "无法访问上游回调：超时",
+    );
   });
 });
